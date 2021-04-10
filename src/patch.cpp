@@ -5,7 +5,7 @@
 size_t CountHash(const Str buf) {
     size_t hash = 0;
     for (size_t i = 0; i < buf.len; i++) {
-        hash = hash * HASH_P + buf.c_str[i];                                                                                                                                                      //buf->c_str[0] = 0;
+        hash = hash * HASH_P + buf.c_str[i];
     }
 
     buf.c_str[0] = 1;

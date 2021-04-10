@@ -61,8 +61,8 @@ int InitBarmaley(Creature *barmaley) {
         return 1;
     }
     barmaley->begin_time = 0;
-    barmaley->end_time = 0;
-    barmaley->health = 1 + rand() % BARMALEY_MAX_HEALTH;
+    barmaley->end_time   = 0;
+    barmaley->health     = 1 + rand() % BARMALEY_MAX_HEALTH;
     return 0;
 };
 
@@ -70,7 +70,7 @@ void UpdateBarmaleyTime(Creature *barmaley) {
     assert(barmaley);
 
     barmaley->begin_time = time(NULL);
-    barmaley->end_time = barmaley->begin_time + 1 + rand() % MAX_BARMALEY_SHOW_TIME;
+    barmaley->end_time   = barmaley->begin_time + 1 + rand() % MAX_BARMALEY_SHOW_TIME;
 }
 
 void DestructCreature(Creature *barmaley) {
@@ -95,28 +95,31 @@ void UpdateCatTime(Creature *cat) {
     assert(cat);
 
     cat->begin_time = time(NULL);
-    cat->end_time = cat->begin_time + 1;
+    cat->end_time   = cat->begin_time + 1;
 }
 
-void SwitchCreature(Game *game) {
+int SwitchCreature(Game *game) {
     assert(game);
 
     switch (game->cur_creature_type) {
         case CAT:
             game->cur_creature_type = BARMALEY;
-            game->cur_creature = &game->barmaley;
+            game->cur_creature      = &game->barmaley;
             UpdateBarmaleyTime(&game->barmaley);
             break;
         case BARMALEY:
             game->cur_creature_type = CAT;
-            game->cur_creature = &game->cat;
+            game->cur_creature      = &game->cat;
             UpdateCatTime(&game->cat);
             break;
         default:
             break;
     }
 
-    UpdateMainWin(game->cur_creature->surface, &game->main_win);
+    if (UpdateMainWin(game->cur_creature->surface, &game->main_win)) {
+        return 1;
+    }
+    return 0;
 }
 
 
@@ -143,7 +146,10 @@ int InitGame(Game *game) {
         return 1;
     }
 
-    SwitchCreature(game);
+    if (SwitchCreature(game)) {
+        return 1;
+    }
+
     UpdateGameTime(game);
     game->result = LOSE;
     return 0;
@@ -237,45 +243,69 @@ int HitCreature(Game *game) {
 
 
 
-void UpdateCurCharachter(Game *game) {
+int UpdateCurCharachter(Game *game) {
     assert(game);
 
     UpdateGameTime(game);
     if (game->cur_time >= game->cur_creature->end_time) {
-        SwitchCreature(game);
+        if (SwitchCreature(game)) {
+            return 1;
+        }
     }
+
+    return 0;
+}
+
+
+int EventHandler(Game *game, bool *quit) {
+    assert(game);
+    assert(quit);
+
+    SDL_Event event = {};
+    while (SDL_PollEvent(&event) && !*quit) {
+        switch (event.type) {
+            case SDL_QUIT:
+                *quit = true;
+                break;
+            case SDL_MOUSEBUTTONDOWN:
+                if (HitCreature(game)) {
+                    return 1;
+                }
+
+                if (game->cat.health <= 0) {
+                    game->result = LOSE;
+                    *quit = true;
+                } else if (game->barmaley.health <= 0) {
+                    game->result = WIN;
+                    *quit = true;
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
+    return 0;
 }
 
 
 
 int PlayGame(Game *game) {
+    assert(game);
+
     if (InitGame(game)) {
         return 1;
     }
 
-	SDL_Event event = {};
 	bool quit = false;
 
     while (!quit) {
-        UpdateCurCharachter(game);
-        while (SDL_PollEvent(&event) && !quit) {
-            switch (event.type) {
-                case SDL_QUIT:
-                    quit = true;
-                    break;
-                case SDL_MOUSEBUTTONDOWN:
-                    HitCreature(game);
-                    if (game->cat.health <= 0) {
-                        game->result = LOSE;
-                        quit = true;
-                    } else if (game->barmaley.health <= 0) {
-                        game->result = WIN;
-                        quit = true;
-                    }
-                    break;
-                default:
-                    break;
-            }
+        if (UpdateCurCharachter(game)) {
+            return 1;
+        }
+
+        if (EventHandler(game, &quit)) {
+            return 1;
         }
 
         if (UpdateMainWin(game->cur_creature->surface, &game->main_win)) {

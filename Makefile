@@ -1,6 +1,6 @@
 CC=g++
 
-CFLAGS = -Wall -Wextra
+CFLAGS=
 LIBS=libs/ONEGIN_files.o libs/ONEGIN_strings.o libs/ONEGIN_structs.o libs/barmaley.o -lSDL2_image -g `sdl2-config --cflags --libs`
 
 
